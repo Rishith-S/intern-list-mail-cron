@@ -100,9 +100,9 @@ async function runAirtableETL(env: Env): Promise<void> {
 			}
 			console.log(`Found ${newJobs.length} NEW jobs that weren't in previous top 350.`);
 
-			console.log(`New jobs: ${newJobs[0].id}`);
-
+			
 			if (newJobs.length > 0) {
+				console.log(`New jobs: ${newJobs[0].id}`);
 				// Send only the NEW jobs
 				const htmlContent: string = formatJobsAsList(newJobs);
 				const recordCount = newJobs.length;
