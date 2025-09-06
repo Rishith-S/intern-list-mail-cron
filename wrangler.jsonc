@@ -1,0 +1,48 @@
+/**
+ * For more details on how to configure Wrangler, refer to:
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+ {
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "intern-list",
+	"main": "src/index.ts",
+	"compatibility_date": "2025-09-06",
+	"observability": {
+		"enabled": true
+	},
+
+	/**
+	 * Triggers
+	 * This correctly sets your cron schedule.
+	 */
+	"triggers": {
+		"crons": [
+			"*/30 * * * *" // This will run every minute. Change to "0 * * * *" for hourly.
+		]
+	},
+
+	/**
+	 * Environment Variables
+	 * This is the block you were missing.
+	 * Your script needs these three variables to work.
+	 */
+
+	  // Add this to your wrangler.jsonc
+	  "kv_namespaces": [
+		{
+		  "binding": "SENT_JOBS_KV",
+		  "id": "e53092a7f4fe40569ae061f9a0615d54",
+		}
+	  ],
+
+	"vars": {
+		"TO_EMAIL": "saginalarishith@gmail.com",
+		"FROM_EMAIL": "Internships <onboarding@resend.dev>",
+		"TARGET_URL": "https://airtable.com/v0.3/view/viw61qgWuwtIvkyIP/readSharedViewData?stringifiedObjectParams=%7B%22shouldUseNestedResponseFormat%22%3Atrue%7D&requestId=reqSn16mBswcU07oR&accessPolicy=%7B%22allowedActions%22%3A%5B%7B%22modelClassName%22%3A%22view%22%2C%22modelIdSelector%22%3A%22viw61qgWuwtIvkyIP%22%2C%22action%22%3A%22readSharedViewData%22%7D%2C%7B%22modelClassName%22%3A%22view%22%2C%22modelIdSelector%22%3A%22viw61qgWuwtIvkyIP%22%2C%22action%22%3A%22getMetadataForPrinting%22%7D%2C%7B%22modelClassName%22%3A%22view%22%2C%22modelIdSelector%22%3A%22viw61qgWuwtIvkyIP%22%2C%22action%22%3A%22readSignedAttachmentUrls%22%7D%2C%7B%22modelClassName%22%3A%22row%22%2C%22modelIdSelector%22%3A%22rows%20*%5BdisplayedInView%3Dviw61qgWuwtIvkyIP%5D%22%2C%22action%22%3A%22createDocumentPreviewSession%22%7D%2C%7B%22modelClassName%22%3A%22view%22%2C%22modelIdSelector%22%3A%22viw61qgWuwtIvkyIP%22%2C%22action%22%3A%22downloadCsv%22%7D%2C%7B%22modelClassName%22%3A%22view%22%2C%22modelIdSelector%22%3A%22viw61qgWuwtIvkyIP%22%2C%22action%22%3A%22downloadICal%22%7D%2C%7B%22modelClassName%22%3A%22row%22%2C%22modelIdSelector%22%3A%22rows%20*%5BdisplayedInView%3Dviw61qgWuwtIvkyIP%5D%22%2C%22action%22%3A%22downloadAttachment%22%7D%5D%2C%22shareId%22%3A%22shrOTtndhc6HSgnYb%22%2C%22applicationId%22%3A%22app17F0kkWQZhC6HB%22%2C%22generationNumber%22%3A0%2C%22expires%22%3A%222025-09-25T00%3A00%3A00.000Z%22%2C%22signature%22%3A%22ce3d8a966aab44edffb7966b22cff2ef55c0bda59def5cd750541a539f140584%22%7D"
+	}
+
+	/**
+	 * Note: Your RESEND_API_KEY secret is still correct.
+	 * It does NOT go in this file. You set it with `wrangler secret put...`
+	 */
+}
