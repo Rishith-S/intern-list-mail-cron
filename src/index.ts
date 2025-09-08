@@ -73,27 +73,43 @@ export default {
 };
 
 /**
- * Main ETL function - COMPARE TOP 350 JOBS
+ * Main ETL function - COMPARE TOP 100 JOBS
  */
 async function runAirtableETL(env: Env): Promise<void> {
 	try {
 		const { records } = await fetchAirtableData(env);
 
 		if (records) {
-			const currentTop350 = records.slice(0, 350);
+			const currentTop100 = records.slice(0, 100);
 
 			// Get the previous top job URL
 			const previousTopUrl = await getPreviousTopUrl(env);
 
-			// Find NEW jobs that weren't in the previous top 350
-			const newJobs: typeof currentTop350 = [];
-			for (const record of currentTop350) {
-				const jobUrl = getJobUrl(record);
-				if (previousTopUrl && jobUrl === previousTopUrl) {
-					break; // Found the last sent job, stop here
+		// Find NEW jobs that are ranked higher than the previously sent job
+		const newJobs: typeof currentTop100 = [];
+		
+		if (previousTopUrl) {
+			// Find the position of the previously sent job in current rankings
+			let previousJobIndex = -1;
+			for (let i = 0; i < currentTop100.length; i++) {
+				const jobUrl = getJobUrl(currentTop100[i]);
+				if (jobUrl === previousTopUrl) {
+					previousJobIndex = i;
+					break;
 				}
-				newJobs.push(record);
 			}
+			
+			if (previousJobIndex >= 0) {
+				// Only send jobs that are ranked higher (better) than the previously sent job
+				newJobs.push(...currentTop100.slice(0, previousJobIndex));
+			} else {
+				// Previous job not found in current top 100, send all jobs
+				newJobs.push(...currentTop100);
+			}
+		} else {
+			// No previous job URL stored, send all jobs
+			newJobs.push(...currentTop100);
+		}
 
 			if (newJobs.length > 0) {
 				// Send only the NEW jobs
