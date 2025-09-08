@@ -68,7 +68,6 @@ interface FetchResult {
 
 export default {
 	async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-		console.log("Cron triggered: Starting Airtable fetch-and-email (Resend) job...");
 		ctx.waitUntil(runAirtableETL(env));
 	},
 };
@@ -81,28 +80,22 @@ async function runAirtableETL(env: Env): Promise<void> {
 		const { records } = await fetchAirtableData(env);
 
 		if (records) {
-			console.log(`Successfully fetched ${records.length} records. Processing jobs...`);
-		
-			// Get the previous top 350 job IDs
-			const previousTopId = await getPreviousTopId(env);
-
-			console.log(`Previous top job ID: ${previousTopId}`);
-
 			const currentTop350 = records.slice(0, 350);
+
+			// Get the previous top job URL
+			const previousTopUrl = await getPreviousTopUrl(env);
 
 			// Find NEW jobs that weren't in the previous top 350
 			const newJobs: typeof currentTop350 = [];
 			for (const record of currentTop350) {
-				if (previousTopId === record.id) {
-					break;
+				const jobUrl = getJobUrl(record);
+				if (previousTopUrl && jobUrl === previousTopUrl) {
+					break; // Found the last sent job, stop here
 				}
 				newJobs.push(record);
 			}
-			console.log(`Found ${newJobs.length} NEW jobs that weren't in previous top 350.`);
 
-			
 			if (newJobs.length > 0) {
-				console.log(`New jobs: ${newJobs[0].id}`);
 				// Send only the NEW jobs
 				const htmlContent: string = formatJobsAsList(newJobs);
 				const recordCount = newJobs.length;
@@ -111,20 +104,16 @@ async function runAirtableETL(env: Env): Promise<void> {
 					// Pass the HTML string directly to the send function
 					await sendEmailWithHtml(env, htmlContent, recordCount);
 
-					// Update the stored top 350 job IDs ONLY AFTER successfully sending email
-					await updatePreviousTopId(env, newJobs[0].id);
-
-					console.log(`Successfully sent ${recordCount} NEW jobs to ${env.TO_EMAIL}.`);
+					// Update the stored top job URL ONLY AFTER successfully sending email
+					const lastJobUrl = getJobUrl(newJobs[0]);
+					if (lastJobUrl) {
+						await updatePreviousTopUrl(env, lastJobUrl);
+					}
 				} catch (emailError) {
 					console.error("Failed to send email, not updating stored job IDs:", emailError);
 					throw emailError;
 				}
-			} else {
-				console.log("No new jobs to send - all top 350 jobs were already sent before.");
 			}
-
-		} else {
-			console.log("Script failed to fetch any data from Airtable.");
 		}
 	} catch (err: any) {
 		console.error("ETL job failed:", err.message);
@@ -136,55 +125,36 @@ async function runAirtableETL(env: Env): Promise<void> {
 ================================================================= */
 
 /**
- * Get the previous top job ID from KV storage
+ * Get the previous top job URL from KV storage
  */
-async function getPreviousTopId(env: Env): Promise<string> {
+async function getPreviousTopUrl(env: Env): Promise<string> {
 	try {
-		const previousIdsData = await env.SENT_JOBS_KV.get('previous_top_id');
-		if (previousIdsData) {
-			const jobId = JSON.parse(previousIdsData) as string;
-			return jobId
+		const previousUrlData = await env.SENT_JOBS_KV.get('previous_top_url');
+		if (previousUrlData) {
+			const jobUrl = JSON.parse(previousUrlData) as string;
+			return jobUrl
 		}
 		return "";
 	} catch (err) {
-		console.error("Failed to get previous top job ID:", err);
+		console.error("Failed to get previous top job URL:", err);
 		return "";
 	}
 }
 
 /**
- * Update the stored top job ID in KV storage
+ * Update the stored top job URL in KV storage
  */
-async function updatePreviousTopId(env: Env, currentTopId: string): Promise<void> {
+async function updatePreviousTopUrl(env: Env, currentTopUrl: string): Promise<void> {
 	try {
-		await env.SENT_JOBS_KV.put('previous_top_id', JSON.stringify(currentTopId));
-		console.log(`Updated stored top job ID to ${currentTopId}.`);
+		await env.SENT_JOBS_KV.put('previous_top_url', JSON.stringify(currentTopUrl));
 	} catch (err) {
-		console.error("Failed to update previous top job ID:", err);
+		console.error("Failed to update previous top job URL:", err);
 	}
-}
-
-/**
- 	* Extract job date from record
- */
-function getJobDate(record: AirtableRow): Date | null {
-	const date = parseDate(record.createdTime);
-	return date;
-}
+}	
 
 /**
  * Parse date from cell value (unchanged)
  */
-function parseDate(cellValue: CellValue): Date | null {
-	if (!cellValue) return null;
-
-	// Handle string value		
-	if (typeof cellValue === 'string') {
-		const isoDate = new Date(cellValue);
-		if (!isNaN(isoDate.getTime())) return isoDate;
-	}
-	return null;
-}
 
 /**
  * Sends an email with an HTML body (no attachment).
@@ -227,8 +197,6 @@ async function sendEmailWithHtml(env: Env, htmlBody: string, recordCount: number
 			console.error(`Resend API Error (${response.status}): Unable to parse error response`);
 		}
 		throw new Error(`Failed to send email via Resend: ${errorMessage}`);
-	} else {
-		console.log("HTML Email sent successfully via Resend.");
 	}
 }
 
@@ -342,7 +310,6 @@ function getJobTitle(record: AirtableRow): string {
  * Fetches and parses the Airtable data.
  */
 async function fetchAirtableData(env: Env): Promise<FetchResult> {
-	console.log("Fetching Airtable data...");
 	try {
 		const response: Response = await fetch(env.TARGET_URL, { headers: REQUEST_HEADERS });
 		if (!response.ok) {
