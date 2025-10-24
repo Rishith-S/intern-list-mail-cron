@@ -3,37 +3,49 @@
   All config is read from wrangler.toml ([vars] and secrets)
 ================================================================= */
 
-const REQUEST_HEADERS: Record<string, string> = {
-	'accept': '*/*',
-	'accept-language': 'en-GB,en;q=0.8',
-	'cookie': 'brw=brwRC5FOZ6HDymkcC; __Host-airtable-session=eyJzZXNzaW9uSWQiOiJzZXN6cHBDc2FuQldSdUdzQSIsImNzcmZTZWNyZXQiOiJlN2d0RDU1OVR3TGlZTTI0QnMyZlRIeHoifQ==; __Host-airtable-session.sig=U5CO9zIg-Jh7aD3jp4-xcx1TRxxSITYVwOP_ZYUiBVo; AWSALBTGCORS=dAiRwMcW4i/f7gic6/DG0kS71TOibYiWeSTKMBM6hSJC9EN99sPZb54AJ9hQ7DIVoZJgK5qeAp87C76lOSM/XHMJDlduN3F2U2+nKlaBsoejoT5cjliXAQavivZhG96vl69bYBypZlX71rofzf6UDhM/nZtLrGo1H4uKZ9uddVMOGhiZS9Q=; brwConsent=opt-in',
-	'priority': 'u=1, i',
-	'sec-ch-ua': '"Not;A=Brand";v="99", "Brave";v="139", "Chromium";v="139"',
-	'sec-ch-ua-mobile': '?0',
-	'sec-ch-ua-platform': '"macOS"',
-	'sec-fetch-dest': 'empty',
-	'sec-fetch-mode': 'cors',
-	'sec-fetch-site': 'same-origin',
-	'sec-fetch-storage-access': 'none',
-	'sec-gpc': '1',
-	'traceparent': '00-1ecd47058a5a2926b929ee5b7a30f892-9be1f61f07eb099d-01',
-	'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
-	'x-airtable-accept-msgpack': 'true',
-	'x-airtable-application-id': 'app17F0kkWQZhC6HB',
-	'x-airtable-inter-service-client': 'webClient',
-	'x-airtable-page-load-id': 'pglj5n2j8O7zLgn8j',
-	'x-early-prefetch': 'true',
-	'x-requested-with': 'XMLHttpRequest',
-	'x-time-zone': 'America/Los_Angeles',
-	'x-user-locale': 'en'
+const REQUEST_HEADERS = {
+    'accept': '*/*',
+    'accept-language': 'en-GB,en;q=0.8',
+    'cookie': 'brw=brw5mznMDPbxOXggK; __Host-airtable-session=eyJzZXNzaW9uSWQiOiJzZXNsaGtPQldHS2VITlBMQyIsImNzcmZTZWNyZXQiOiJYdVZqTVdCVllzaUp5bHdaR21VWm5sT1EifQ==; __Host-airtable-session.sig=wsABHMb8O05x3NF6Se2ky1f3yJZnO4ULZ3QB8LBuWVw; AWSALBTGCORS=/o0hZyLErafzyDP5FXQyPtC2LP0N8OOWuqP6AOiCq2/gMD4jxOsZxMn4jj+tr4oPEqvJJ6Ob/eP3b5EuWkmccRG//XFif1pPUAd8yle1bt8ATlP/6Rrca2bmSX+x1Wnlf/54nT6MN+IU+YVMqLW6NxZhbabrJAaaoJxzuhdyvqB6lAXmchQ=; brwConsent=opt-in',
+    'priority': 'u=1, i',
+    'sec-ch-ua': '"Brave";v="141", "Not?A_Brand";v="8", "Chromium";v="141"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"macOS"',
+    'sec-fetch-dest': 'empty',
+    'sec-fetch-mode': 'cors',
+    'sec-fetch-site': 'same-origin',
+    'sec-gpc': '1',
+    'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+    'x-airtable-application-id': 'appjSXAWiVF4d1HoZ',
+    'x-airtable-inter-service-client': 'webClient',
+    'x-airtable-page-load-id': 'pglZUFnTW74jvbgLz',
+    'x-requested-with': 'XMLHttpRequest',
+    'x-time-zone': 'America/Los_Angeles',
+    'x-user-locale': 'en'
+}
+
+// Keys and column IDs centralized in one place
+const KV_KEYS = {
+  PREVIOUS_TOP_URLS: 'previous_top_urls',
 };
+
+const AIRTABLE_COLUMNS = {
+  COMPANY: 'fld3l0CHdEtB1J5mc',
+  TITLE: 'fld8Y85lQOsSpeVFR',
+  URL: 'fld0JOdY3vdhUbQBK',
+};
+
+
 
 /* =================================================================
   TYPESCRIPT INTERFACES
 ================================================================= */
 
 export interface Env {
-	RESEND_API_KEY: string;
+	RESEND_API_KEY_1: string;	
+	RESEND_API_KEY_2: string;
+	RESEND_API_KEY_3: string;
+	RESEND_API_KEY_4: string;
 	TO_EMAIL: string;
 	FROM_EMAIL: string;
 	TARGET_URL: string;
@@ -82,49 +94,44 @@ async function runAirtableETL(env: Env): Promise<void> {
 		if (records) {
 			const currentTop100 = records.slice(0, 100);
 
-			// Get the previous top job URL
-			const previousTopUrl = await getPreviousTopUrl(env);
+			const previousTopUrls = await getPreviousTopUrls(env);
 
-		// Find NEW jobs that are ranked higher than the previously sent job
-		const newJobs: typeof currentTop100 = [];
-		
-		if (previousTopUrl) {
-			// Find the position of the previously sent job in current rankings
-			let previousJobIndex = -1;
-			for (let i = 0; i < currentTop100.length; i++) {
-				const jobUrl = getJobUrl(currentTop100[i]);
-				if (jobUrl === previousTopUrl) {
-					previousJobIndex = i;
-					break;
+			// Find NEW jobs that are ranked higher than any previously sent job
+			const newJobs: typeof currentTop100 = [];
+
+			if (previousTopUrls.length > 0) {
+				let foundJobIndex = -1;
+				// Search through current top 100 for any match with previous URLs
+				for (let i = 0; i < currentTop100.length; i++) {
+					const jobUrl = getJobUrl(currentTop100[i]);
+					if (jobUrl && previousTopUrls.includes(jobUrl)) {
+						foundJobIndex = i;
+						break; // Break as soon as we find one match
+					}
 				}
-			}
-			
-			if (previousJobIndex >= 0) {
-				// Only send jobs that are ranked higher (better) than the previously sent job
-				newJobs.push(...currentTop100.slice(0, previousJobIndex));
+
+				if (foundJobIndex >= 0) {
+					newJobs.push(...currentTop100.slice(0, foundJobIndex));
+				} else {
+					// If no previous job found in current top 100, send all 100
+					newJobs.push(...currentTop100);
+				}
 			} else {
-				// Previous job not found in current top 100, send all jobs
 				newJobs.push(...currentTop100);
 			}
-		} else {
-			// No previous job URL stored, send all jobs
-			newJobs.push(...currentTop100);
-		}
 
 			if (newJobs.length > 0) {
-				// Send only the NEW jobs
 				const htmlContent: string = formatJobsAsList(newJobs);
 				const recordCount = newJobs.length;
 
 				try {
-					// Pass the HTML string directly to the send function
 					await sendEmailWithHtml(env, htmlContent, recordCount);
 
-					// Update the stored top job URL ONLY AFTER successfully sending email
-					const lastJobUrl = getJobUrl(newJobs[0]);
-					if (lastJobUrl) {
-						await updatePreviousTopUrl(env, lastJobUrl);
-					}
+					// Store all current top 100 URLs for next comparison
+					const currentTop100Urls = currentTop100
+						.map(job => getJobUrl(job))
+						.filter(url => url !== null) as string[];
+					await updatePreviousTopUrls(env, currentTop100Urls);
 				} catch (emailError) {
 					console.error("Failed to send email, not updating stored job IDs:", emailError);
 					throw emailError;
@@ -141,32 +148,32 @@ async function runAirtableETL(env: Env): Promise<void> {
 ================================================================= */
 
 /**
- * Get the previous top job URL from KV storage
+ * Get the previous top 100 job URLs from KV storage
  */
-async function getPreviousTopUrl(env: Env): Promise<string> {
+async function getPreviousTopUrls(env: Env): Promise<string[]> {
 	try {
-		const previousUrlData = await env.SENT_JOBS_KV.get('previous_top_url');
-		if (previousUrlData) {
-			const jobUrl = JSON.parse(previousUrlData) as string;
-			return jobUrl
+		const previousUrlsData = await env.SENT_JOBS_KV.get(KV_KEYS.PREVIOUS_TOP_URLS);
+		if (previousUrlsData) {
+			const jobUrls = JSON.parse(previousUrlsData) as string[];
+			return jobUrls
 		}
-		return "";
+		return [];
 	} catch (err) {
-		console.error("Failed to get previous top job URL:", err);
-		return "";
+		console.error("Failed to get previous top job URLs:", err);
+		return [];
 	}
 }
 
 /**
- * Update the stored top job URL in KV storage
+ * Update the stored top 100 job URLs in KV storage
  */
-async function updatePreviousTopUrl(env: Env, currentTopUrl: string): Promise<void> {
+async function updatePreviousTopUrls(env: Env, currentTopUrls: string[]): Promise<void> {
 	try {
-		await env.SENT_JOBS_KV.put('previous_top_url', JSON.stringify(currentTopUrl));
+		await env.SENT_JOBS_KV.put(KV_KEYS.PREVIOUS_TOP_URLS, JSON.stringify(currentTopUrls));
 	} catch (err) {
-		console.error("Failed to update previous top job URL:", err);
+		console.error("Failed to update previous top job URLs:", err);
 	}
-}	
+}
 
 /**
  * Parse date from cell value (unchanged)
@@ -177,28 +184,54 @@ async function updatePreviousTopUrl(env: Env, currentTopUrl: string): Promise<vo
  */
 async function sendEmailWithHtml(env: Env, htmlBody: string, recordCount: number): Promise<void> {
 
-	const emailPayload = {
-		from: `${env.FROM_EMAIL}`,
-		to: env.TO_EMAIL,
-		subject: `New Jobs Report: ${recordCount} New Jobs Found`,
+	const subject = `New Jobs Report: ${recordCount} New Jobs Found`;
 
+	const recipients: { to: string; intro: string }[] = [
+		{ to: "saginalarishith@gmail.com", intro: `${recordCount} new jobs found.` },
+		{ to: "lathagowda1202@gmail.com", intro: `${recordCount} new jobs found.` },
+		{ to: "saisravan1023@gmail.com", intro: `${recordCount} new jobs found.` },
+		{ to: "poluvvssaikiran@gmail.com", intro: `${recordCount} new jobs found.` },
+	];
+
+	const apiKeys: string[] = [
+		env.RESEND_API_KEY_1,
+		env.RESEND_API_KEY_2,
+		env.RESEND_API_KEY_3,
+		env.RESEND_API_KEY_4,
+	];
+
+	const emailRequests = recipients.map((recipient, index) => {
+		const payload = buildEmailPayload(env.FROM_EMAIL, recipient.to, subject, recipient.intro, htmlBody);
+		return sendResendEmail(apiKeys[index], payload);
+	});
+
+	await Promise.all(emailRequests);
+}
+
+function buildEmailPayload(from: string, to: string, subject: string, intro: string, htmlBody: string) {
+	return {
+		from: `${from}`,
+		to: [to],
+		subject,
 		html: `
 		<html>
 		  <body>
-			<p>Here are the new jobs found in the latest scan. ${recordCount} new jobs found.</p>
+			<p>${intro}</p>
 			${htmlBody}
 		  </body>
 		</html>
 	  `,
 	};
+}
 
+async function sendResendEmail(apiKey: string, payload: unknown): Promise<void> {
 	const response = await fetch("https://api.resend.com/emails", {
 		method: "POST",
 		headers: {
-			"Authorization": `Bearer ${env.RESEND_API_KEY}`,
+			"Authorization": `Bearer ${apiKey}`,
 			"Content-Type": "application/json",
 		},
-		body: JSON.stringify(emailPayload),
+		body: JSON.stringify(payload),
 	});
 
 	if (!response.ok) {
@@ -209,7 +242,7 @@ async function sendEmailWithHtml(env: Env, htmlBody: string, recordCount: number
 				? (errorResponse as { message?: string }).message || errorMessage
 				: JSON.stringify(errorResponse);
 			console.error(`Resend API Error (${response.status}): ${JSON.stringify(errorResponse)}`);
-		} catch (parseErr) {
+		} catch (_) {
 			console.error(`Resend API Error (${response.status}): Unable to parse error response`);
 		}
 		throw new Error(`Failed to send email via Resend: ${errorMessage}`);
@@ -266,9 +299,7 @@ function formatJobsAsList(records: AirtableRow[]): string {
  * Extract company name from record
  */
 function getCompanyName(record: AirtableRow): string {
-	const companyColumn = "fldpdL6kzApwtHAAq";
-
-	const cellValue = (record.cellValuesByColumnId[companyColumn]);
+	const cellValue = (record.cellValuesByColumnId[AIRTABLE_COLUMNS.COMPANY]);
 	if (cellValue && typeof cellValue === 'string') {
 		return cellValue;
 	}
@@ -280,8 +311,7 @@ function getCompanyName(record: AirtableRow): string {
  * Extract job title from record
  */
 function getJobTitle(record: AirtableRow): string {
-	const titleColumn = "fldiDLYrIz09i4roI";
-	const cellValue = record.cellValuesByColumnId[titleColumn];
+	const cellValue = record.cellValuesByColumnId[AIRTABLE_COLUMNS.TITLE];
 
 	if (cellValue && typeof cellValue === 'string' && cellValue.length > 0) {
 		return cellValue;
@@ -293,30 +323,26 @@ function getJobTitle(record: AirtableRow): string {
 /**
  * Extract job URL from record
  */
-	function getJobUrl(record: AirtableRow): string | null {
-	const urlColumn = "fldyiaxKyYILOF7wH";
+function getJobUrl(record: AirtableRow): string | null {
+	const rawCellValue = record.cellValuesByColumnId[AIRTABLE_COLUMNS.URL];
+	return extractHttpUrl(rawCellValue);
+}
 
-	const cellValue = (record.cellValuesByColumnId[urlColumn] as AirtableLink).url;
+function extractHttpUrl(value: CellValue): string | null {
+	if (!value) {
+		return null;
+	}
 
-	if (cellValue) {
-			// Handle string URLs
-			if (typeof cellValue === 'string' && cellValue.startsWith('http')) {
-				return cellValue;
-			}
-			// Handle link objects
-			if (typeof cellValue === 'object' && cellValue !== null && (cellValue as any).url) {
-				return (cellValue as any).url;
-			}
-			// Handle arrays
-			if (Array.isArray(cellValue) && cellValue.length > 0) {
-				const firstItem = cellValue[0];
-				if (typeof firstItem === 'string' && firstItem.startsWith('http')) {
-					return firstItem;
-				}
-				if (typeof firstItem === 'object' && firstItem !== null && (firstItem as any).url) {
-					return (firstItem as any).url;
-				}
-			}
+	if (typeof value === 'string' && value.startsWith('http')) {
+		return value;
+	}
+
+	if (Array.isArray(value) && value.length > 0) {
+		return extractHttpUrl(value[0]);
+	}
+
+	if (typeof value === 'object' && 'url' in value && value.url && typeof value.url === 'string' && value.url.startsWith('http')) {
+		return value.url;
 	}
 
 	return null;
@@ -327,7 +353,9 @@ function getJobTitle(record: AirtableRow): string {
  */
 async function fetchAirtableData(env: Env): Promise<FetchResult> {
 	try {
-		const response: Response = await fetch(env.TARGET_URL, { headers: REQUEST_HEADERS });
+		const response: Response = await fetch(env.TARGET_URL, {
+			headers: REQUEST_HEADERS,
+		});
 		if (!response.ok) {
 			throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
 		}
