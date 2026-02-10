@@ -9,6 +9,7 @@
 		"cf-typegen": "wrangler types"
 	},
 	"devDependencies": {
+		"tsx": "^4.20.6",
 		"typescript": "^5.9.2",
 		"wrangler": "^4.34.0"
 	},

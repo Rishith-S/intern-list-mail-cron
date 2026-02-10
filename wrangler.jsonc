@@ -29,10 +29,10 @@
 
 	  // Add this to your wrangler.jsonc
 	  "kv_namespaces": [
-		{
-		  "binding": "SENT_JOBS_KV",
-		  "id": "e53092a7f4fe40569ae061f9a0615d54",
-		}
+			{
+				"binding": "SENT_JOBS_KV",
+				"id": "e53092a7f4fe40569ae061f9a0615d54",
+			}
 	  ],
 
 	"vars": {
